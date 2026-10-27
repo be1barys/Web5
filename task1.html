@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Task 1: Turn-Based Battle</title>
+    <style>
+        body { font-family: system-ui; max-width: 600px; margin: 2rem auto; text-align: center; }
+        .bars { display: flex; justify-content: space-between; margin-bottom: 1rem; }
+        .bar-container { width: 45%; border: 1px solid #ccc; background: #eee; height: 25px; position: relative; }
+        .bar-fill { background: #4caf50; height: 100%; transition: width 0.3s; }
+        .bar-text { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; }
+        #logs { text-align: left; background: #f9f9f9; padding: 1rem; height: 150px; overflow-y: auto; border: 1px solid #ddd; }
+        button { padding: 0.5rem 1rem; margin: 0.2rem; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h2>Student vs. Deadline</h2>
+    <div class="bars">
+        <div class="bar-container">
+            <div id="hero-bar" class="bar-fill" style="width: 100%;"></div>
+            <div id="hero-text" class="bar-text">Student: 100 HP</div>
+        </div>
+        <div class="bar-container">
+            <div id="enemy-bar" class="bar-fill" style="background: #f44336; width: 100%;"></div>
+            <div id="enemy-text" class="bar-text">Deadline: 100 HP</div>
+        </div>
+    </div>
+    
+    <div id="controls">
+        <button id="btn-attack">Attack (Study)</button>
+        <button id="btn-defend">Defend (Rest)</button>
+        <button id="btn-heal">Heal (Coffee) - <span id="heal-count">3</span> left</button>
+    </div>
+    
+    <div id="logs"></div>
+    <button id="btn-restart" style="display:none; margin-top: 1rem;">Restart Game</button>
+
+    <script>
+        // Constants
+        const MAX_HP = 100;
+        const HERO_MIN_DMG = 8;
+        const HERO_MAX_DMG = 15;
+        const ENEMY_MIN_DMG = 5;
+        const ENEMY_MAX_DMG = 14;
+        const HEAL_AMOUNT = 20;
+        const MAX_HEALS = 3;
+        const CRIT_CHANCE = 0.1;
+
+        // State
+        let heroHP = MAX_HP;
+        let enemyHP = MAX_HP;
+        let healsLeft = MAX_HEALS;
+        let isDefending = false;
+        let logs = [];
+
+        // DOM Elements
+        const heroBar = document.getElementById('hero-bar');
+        const heroText = document.getElementById('hero-text');
+        const enemyBar = document.getElementById('enemy-bar');
+        const enemyText = document.getElementById('enemy-text');
+        const logsDiv = document.getElementById('logs');
+        const healCountText = document.getElementById('heal-count');
+        const controls = document.getElementById('controls');
+        const restartBtn = document.getElementById('btn-restart');
+
+        const getRandom = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+        const updateUI = () => {
+            heroBar.style.width = `${Math.max(0, heroHP)}%`;
+            heroText.textContent = `Student: ${Math.max(0, heroHP)} HP`;
+            enemyBar.style.width = `${Math.max(0, enemyHP)}%`;
+            enemyText.textContent = `Deadline: ${Math.max(0, enemyHP)} HP`;
+            healCountText.textContent = healsLeft;
+            
+            logsDiv.innerHTML = logs.slice(-5).map(log => `<p style="margin: 2px 0;">${log}</p>`).join('');
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+
+            if (heroHP <= 0 || enemyHP <= 0) {
+                controls.style.display = 'none';
+                restartBtn.style.display = 'inline-block';
+                if (heroHP <= 0 && enemyHP <= 0) addLog("It's a draw!");
+                else if (heroHP <= 0) addLog("You failed the deadline! Game Over.");
+                else addLog("You beat the deadline! You win!");
+            }
+        };
+
+        const addLog = (msg) => { logs.push(msg); };
+
+        const enemyTurn = () => {
+            if (enemyHP <= 0) return;
+            let dmg = getRandom(ENEMY_MIN_DMG, ENEMY_MAX_DMG);
+            if (isDefending) {
+                dmg = Math.floor(dmg / 2);
+                isDefending = false;
+            }
+            heroHP -= dmg;
+            addLog(`Deadline attacks for ${dmg} damage!`);
+            updateUI();
+        };
+
+        document.getElementById('btn-attack').addEventListener('click', () => {
+            let dmg = getRandom(HERO_MIN_DMG, HERO_MAX_DMG);
+            const isCrit = Math.random() < CRIT_CHANCE;
+            if (isCrit) { dmg *= 2; addLog("Critical Hit!"); }
+            enemyHP -= dmg;
+            addLog(`You attack for ${dmg} damage.`);
+            updateUI();
+            if (enemyHP > 0) setTimeout(enemyTurn, 500);
+        });
+
+        document.getElementById('btn-defend').addEventListener('click', () => {
+            isDefending = true;
+            addLog("You rest. Next incoming damage is halved.");
+            setTimeout(enemyTurn, 500);
+        });
+
+        document.getElementById('btn-heal').addEventListener('click', () => {
+            if (healsLeft <= 0) {
+                alert("No heals left!");
+                return;
+            }
+            if (heroHP === MAX_HP) {
+                alert("HP is already full!");
+                return;
+            }
+            heroHP = Math.min(MAX_HP, heroHP + HEAL_AMOUNT);
+            healsLeft--;
+            addLog(`You drink coffee and heal ${HEAL_AMOUNT} HP.`);
+            updateUI();
+            setTimeout(enemyTurn, 500);
+        });
+
+        restartBtn.addEventListener('click', () => {
+            heroHP = MAX_HP;
+            enemyHP = MAX_HP;
+            healsLeft = MAX_HEALS;
+            isDefending = false;
+            logs = [];
+            controls.style.display = 'block';
+            restartBtn.style.display = 'none';
+            addLog("Game restarted.");
+            updateUI();
+        });
+
+        updateUI();
+    </script>
+</body>
+</html>

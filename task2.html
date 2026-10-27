@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Task 2: Kanban Board</title>
+    <style>
+        body { font-family: system-ui; max-width: 900px; margin: 2rem auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .board { display: flex; gap: 1rem; }
+        .col { flex: 1; background: #f4f5f7; padding: 1rem; border-radius: 8px; min-height: 400px; }
+        .card { background: white; padding: 1rem; margin-bottom: 0.5rem; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card button { margin-top: 0.5rem; cursor: pointer; }
+        .tag { font-size: 0.8rem; background: #e2e8f0; padding: 0.2rem 0.5rem; border-radius: 12px; }
+        #error-msg { color: red; height: 20px; margin-bottom: 1rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>Dorm & Study Tasks</h2>
+        <div>
+            <input type="text" id="search" placeholder="Search tasks...">
+            <span id="progress-text">Progress: 0%</span>
+        </div>
+    </div>
+    <div id="error-msg"></div>
+    <div class="board" id="kanban-board">
+        <div class="col" id="col-todo"><h3>To Do</h3><div class="list" data-status="todo"></div></div>
+        <div class="col" id="col-progress"><h3>In Progress (Max 3)</h3><div class="list" data-status="progress"></div></div>
+        <div class="col" id="col-done"><h3>Done</h3><div class="list" data-status="done"></div></div>
+    </div>
+
+    <script>
+        let tasks = [
+            { id: 1, title: "Finish ASP.NET API", status: "todo", tag: "Study", priority: 1 },
+            { id: 2, title: "Organize Dorm Event", status: "todo", tag: "Dorm", priority: 2 },
+            { id: 3, title: "Update Fantasy Football Repo", status: "todo", tag: "Project", priority: 2 },
+            { id: 4, title: "Run 3km", status: "progress", tag: "Health", priority: 1 },
+            { id: 5, title: "Read JS Chapter 5", status: "progress", tag: "Study", priority: 3 },
+            { id: 6, title: "Fix Bike Chain", status: "todo", tag: "Personal", priority: 3 },
+            { id: 7, title: "Prepare DB Exam", status: "todo", tag: "Study", priority: 1 },
+            { id: 8, title: "Watch Naruto ep", status: "done", tag: "Leisure", priority: 4 },
+            { id: 9, title: "Mentorship Meeting", status: "done", tag: "Dorm", priority: 2 },
+            { id: 10, title: "Deploy Bipon Coffee", status: "done", tag: "Project", priority: 1 }
+        ];
+
+        const lists = {
+            todo: document.querySelector('#col-todo .list'),
+            progress: document.querySelector('#col-progress .list'),
+            done: document.querySelector('#col-done .list')
+        };
+        const errorMsg = document.getElementById('error-msg');
+        const searchInput = document.getElementById('search');
+
+        const render = () => {
+            Object.values(lists).forEach(list => list.innerHTML = '');
+            const filterText = searchInput.value.toLowerCase();
+            
+            let doneCount = 0;
+            let visibleCount = 0;
+
+            for (const task of tasks) {
+                if (!task.title.toLowerCase().includes(filterText) && !task.tag.toLowerCase().includes(filterText)) continue;
+                visibleCount++;
+                if (task.status === 'done') doneCount++;
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between;">
+                        <strong>${task.title}</strong>
+                        <span class="tag">${task.tag}</span>
+                    </div>
+                    <div>
+                        ${task.status !== 'todo' ? `<button data-id="${task.id}" data-action="move-left">←</button>` : ''}
+                        ${task.status !== 'done' ? `<button data-id="${task.id}" data-action="move-right">→</button>` : ''}
+                    </div>
+                `;
+                lists[task.status].appendChild(card);
+            }
+
+            if (visibleCount === 0) lists.todo.innerHTML = '<p>No tasks found.</p>';
+            
+            // Loop calculation requirement
+            const progress = tasks.length ? Math.round((tasks.filter(t => t.status === 'done').length / tasks.length) * 100) : 0;
+            document.getElementById('progress-text').textContent = `Total Progress: ${progress}%`;
+        };
+
+        // Event Delegation
+        document.getElementById('kanban-board').addEventListener('click', (e) => {
+            if (e.target.tagName !== 'BUTTON') return;
+            errorMsg.textContent = '';
+            const taskId = parseInt(e.target.dataset.id);
+            const action = e.target.dataset.action;
+            const taskIndex = tasks.findIndex(t => t.id === taskId);
+            
+            if (action === 'move-right') {
+                if (tasks[taskIndex].status === 'todo') {
+                    const progressCount = tasks.filter(t => t.status === 'progress').length;
+                    if (progressCount >= 3) {
+                        errorMsg.textContent = 'Action Blocked: "In Progress" column is full (Max 3).';
+                        return;
+                    }
+                    tasks[taskIndex].status = 'progress';
+                } else if (tasks[taskIndex].status === 'progress') {
+                    tasks[taskIndex].status = 'done';
+                }
+            } else if (action === 'move-left') {
+                if (tasks[taskIndex].status === 'done') tasks[taskIndex].status = 'progress';
+                else if (tasks[taskIndex].status === 'progress') tasks[taskIndex].status = 'todo';
+            }
+            render();
+        });
+
+        searchInput.addEventListener('input', render);
+        render();
+    </script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Task 3: Ticket Builder</title>
+    <style>
+        body { font-family: system-ui; max-width: 800px; margin: 2rem auto; display: flex; gap: 2rem; }
+        .form-section { flex: 1; }
+        .preview-section { flex: 1; background: #f0fdf4; padding: 1.5rem; border-radius: 8px; border: 2px dashed #4caf50; height: fit-content; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; font-weight: bold; margin-bottom: 0.3rem; }
+        input, select { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; }
+        input[aria-invalid="true"], select[aria-invalid="true"] { border-color: red; }
+        .error-msg { color: red; font-size: 0.8rem; margin-top: 0.2rem; display: block; }
+        .top-error { background: #fee2e2; color: #b91c1c; padding: 0.5rem; border-radius: 4px; margin-bottom: 1rem; display: none; }
+    </style>
+</head>
+<body>
+    <div class="form-section">
+        <h2>Orientation Day Ticket</h2>
+        <div id="top-error" class="top-error"></div>
+        <form id="ticket-form" novalidate>
+            <div class="form-group">
+                <label for="name">Full Name</label>
+                <input type="text" id="name" required minlength="3">
+                <span class="error-msg" id="name-error"></span>
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" required>
+                <span class="error-msg" id="email-error"></span>
+            </div>
+            <div class="form-group">
+                <label for="date">Event Date</label>
+                <input type="date" id="date" required>
+                <span class="error-msg" id="date-error"></span>
+            </div>
+            <div class="form-group">
+                <label for="type">Ticket Type</label>
+                <select id="type" required>
+                    <option value="">Select a type...</option>
+                    <option value="student">Student (150 seats)</option>
+                    <option value="guest">Guest (10 seats)</option>
+                </select>
+                <span class="error-msg" id="type-error"></span>
+            </div>
+            <div class="form-group">
+                <label for="qty">Quantity</label>
+                <input type="number" id="qty" required min="1" max="5">
+                <span class="error-msg" id="qty-error"></span>
+            </div>
+            <div class="form-group">
+                <label for="promo">Promo Code (Optional)</label>
+                <input type="text" id="promo">
+                <span class="error-msg" id="promo-error"></span>
+            </div>
+            <button type="submit" style="padding: 0.5rem 1rem; background: #4caf50; color: white; border: none; cursor: pointer;">Book Ticket</button>
+        </form>
+    </div>
+
+    <div class="preview-section" id="preview">
+        <h3>Live Ticket Preview</h3>
+        <p><strong>Name:</strong> <span id="prev-name">---</span></p>
+        <p><strong>Email:</strong> <span id="prev-email">---</span></p>
+        <p><strong>Date:</strong> <span id="prev-date">---</span></p>
+        <p><strong>Type:</strong> <span id="prev-type">---</span></p>
+        <p><strong>Quantity:</strong> <span id="prev-qty">---</span></p>
+        <p><strong>Discount:</strong> <span id="prev-discount">None</span></p>
+    </div>
+
+    <script>
+        const form = document.getElementById('ticket-form');
+        const seatsLeft = { student: 150, guest: 10 };
+        const soldOutDates = ['2026-10-31', '2026-11-01'];
+        const validPromos = ['AITU2026', 'DORM10'];
+
+        const validateField = (field) => {
+            const errorElement = document.getElementById(`${field.id}-error`);
+            let message = '';
+            field.setAttribute('aria-invalid', 'false');
+
+            if (!field.checkValidity()) {
+                if (field.validity.valueMissing) message = 'This field is required.';
+                else if (field.validity.typeMismatch) message = 'Please enter a valid format.';
+                else if (field.validity.tooShort) message = `Minimum length is ${field.minLength} characters.`;
+            } else {
+                // Custom rules
+                if (field.id === 'date' && soldOutDates.includes(field.value)) {
+                    message = 'This date is sold out.';
+                }
+                if (field.id === 'qty' && form.type.value) {
+                    const maxSeats = seatsLeft[form.type.value];
+                    if (parseInt(field.value) > maxSeats) {
+                        message = `Only ${maxSeats} seats left for this type.`;
+                    } else if (field.value < 1) {
+                        message = 'Quantity must be at least 1.';
+                    }
+                }
+                if (field.id === 'promo' && field.value !== '' && !validPromos.includes(field.value.toUpperCase())) {
+                    message = 'Invalid promo code.';
+                }
+            }
+
+            if (message) {
+                field.setAttribute('aria-invalid', 'true');
+                errorElement.textContent = message;
+                return false;
+            } else {
+                errorElement.textContent = '';
+                return true;
+            }
+        };
+
+        const updatePreview = () => {
+            document.getElementById('prev-name').textContent = form.name.value || '---';
+            document.getElementById('prev-email').textContent = form.email.value || '---';
+            document.getElementById('prev-date').textContent = form.date.value || '---';
+            document.getElementById('prev-type').textContent = form.type.options[form.type.selectedIndex]?.text || '---';
+            document.getElementById('prev-qty').textContent = form.qty.value || '---';
+            
+            const promoVal = form.promo.value.toUpperCase();
+            document.getElementById('prev-discount').textContent = validPromos.includes(promoVal) ? 'Applied!' : 'None';
+        };
+
+        ['input', 'change', 'blur'].forEach(evtType => {
+            form.addEventListener(evtType, (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
+                    if (evtType !== 'input' || e.target.getAttribute('aria-invalid') === 'true') {
+                        validateField(e.target);
+                    }
+                    updatePreview();
+                }
+            }, true);
+        });
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            let isValid = true;
+            let firstInvalid = null;
+            let errorCount = 0;
+
+            Array.from(form.elements).forEach(field => {
+                if (field.tagName === 'INPUT' || field.tagName === 'SELECT') {
+                    if (!validateField(field)) {
+                        isValid = false;
+                        errorCount++;
+                        if (!firstInvalid) firstInvalid = field;
+                    }
+                }
+            });
+
+            const topError = document.getElementById('top-error');
+            if (!isValid) {
+                topError.style.display = 'block';
+                topError.textContent = `Please fix the ${errorCount} error(s) below.`;
+                firstInvalid.focus();
+            } else {
+                topError.style.display = 'none';
+                const bookingCode = 'BK-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+                document.getElementById('preview').innerHTML = `
+                    <h3 style="color: green;">Booking Successful!</h3>
+                    <p>Your booking code is: <strong>${bookingCode}</strong></p>
+                `;
+                form.reset();
+            }
+        });
+    </script>
+</body>
+</html>
